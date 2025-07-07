@@ -8,17 +8,17 @@ int main() {
   ifstream exam_input("exam_input.txt");
   ofstream output("output.txt");
 
-  BinarySearchTree<int> bst(exam_input);
-  bst.visit(Visit::inorder);
+  BinarySearchTree bst(exam_input);
+  bst.visit(Visit::preorder);
 
   cout << endl;
   bst.print_predecessor(bst.get_root());
   bst.print_successor(bst.get_root());
 
   int key_search = 33;
-  Node<int>* node_search = bst.search(bst.get_root(), key_search);
+  Node* node_search = bst.search(bst.get_root(), key_search);
 
-  Huffman<int> h(exam_input);
+  Huffman h(exam_input);
   h.print_codes();
   string huffman_input_str = "ACE";
   h.print_encode(huffman_input_str);

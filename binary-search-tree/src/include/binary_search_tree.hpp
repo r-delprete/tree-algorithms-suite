@@ -10,138 +10,147 @@
 
 enum Visit { inorder, preorder, postorder };
 
-template <typename T>
 class BinarySearchTree {
-  Node<T>* root;
+  Node* root;
 
-  void delete_tree(Node<T>*& node) {
-    if (!node) return;
-
-    delete_tree(node->get_child(Child::left));
-    delete_tree(node->get_child(Child::right));
-    delete node;
+  void format_line(std::string& line) {
+    if (line.front() == '<') line = line.substr(1);
+    if (line.back() == '>') line.pop_back();
+    for (auto& c : line) {
+      if (c == ',') c = ' ';
+    }
   }
 
-  void insert_recursive(Node<T>*& start, Node<T>* node) {
+  void delete_tree(Node*& node) {
+    if (!node) return;
+
+    delete_tree(node->get_left());
+    delete_tree(node->get_right());
+    delete node;
+    node = nullptr;
+  }
+
+  void clear_stream(std::istringstream& stream) {
+    stream.clear();
+    stream.str("");
+  }
+
+  void clear_stream(std::ostringstream& stream) {
+    stream.clear();
+    stream.str("");
+  }
+
+  void insert_recursive(Node*& start, Node* node) {
     if (!start) {
       start = node;
       return;
     }
 
     if (node->get_key() < start->get_key()) {
-      insert_recursive(start->get_child(Child::left), node);
-      start->get_child(Child::left)->set_parent(start);
+      insert_recursive(start->get_left(), node);
+      start->get_left()->set_parent(start);
     } else {
-      insert_recursive(start->get_child(Child::right), node);
-      start->get_child(Child::right)->set_parent(start);
+      insert_recursive(start->get_right(), node);
+      start->get_right()->set_parent(start);
     }
   }
 
-  void inorder_visit(Node<T>* node, std::ostream& out = std::cout) {
+  void inorder_visit(Node* node, std::ostream& out) {
     if (!node) return;
 
-    inorder_visit(node->get_child(Child::left), out);
+    inorder_visit(node->get_left(), out);
     node->print(out);
-    inorder_visit(node->get_child(Child::right), out);
+    inorder_visit(node->get_right(), out);
   }
 
-  void preorder_visit(Node<T>* node, std::ostream& out = std::cout) {
+  void preorder_visit(Node* node, std::ostream& out) {
     if (!node) return;
 
     node->print(out);
-    preorder_visit(node->get_child(Child::left), out);
-    preorder_visit(node->get_child(Child::right), out);
+    preorder_visit(node->get_left(), out);
+    preorder_visit(node->get_right(), out);
   }
 
-  void postorder_visit(Node<T>* node, std::ostream& out = std::cout) {
+  void postorder_visit(Node* node, std::ostream& out) {
     if (!node) return;
 
-    postorder_visit(node->get_child(Child::left), out);
-    postorder_visit(node->get_child(Child::right), out);
+    postorder_visit(node->get_left(), out);
+    postorder_visit(node->get_right(), out);
     node->print(out);
   }
 
 public:
-  BinarySearchTree() : root(nullptr) {}
-
   BinarySearchTree(std::ifstream& input) : root(nullptr) { load(input); }
 
   ~BinarySearchTree() { delete_tree(root); }
 
-  Node<T>*& get_root() { return root; }
+  Node* get_root() const { return root; }
 
   void load(std::ifstream& input) {
+    delete_tree(root);
     input.clear();
     input.seekg(0, std::ios::beg);
 
     std::string line;
     while (std::getline(input, line)) {
-      if (line.front() == '<') line = line.substr(1);
-      if (line.back() == '>') line.pop_back();
-      for (auto& c : line) c = c == ',' ? ' ' : c;
+      format_line(line);
+      std::istringstream iss(line);
 
-      std::istringstream ss(line);
-      T key;
+      int key;
       char ch;
-      ss >> key >> ch;
 
-      ss.clear();
-
-      insert(new Node<T>(key, ch));
+      iss >> key >> ch;
+      insert_node(new Node(key, ch));
+      clear_stream(iss);
     }
   }
 
-  void insert(Node<T>* node) { insert_recursive(root, node); }
+  void insert_node(Node* node) { insert_recursive(root, node); }
 
-  void visit(Visit visit, Node<T>* node = nullptr, std::ostream& out = std::cout) {
+  void visit(Visit visit, Node* node = nullptr, std::ostream& out = std::cout) {
     if (!node && !root) return;
     if (!node) node = root;
 
+    out << (visit == Visit::inorder     ? "Inorder"
+            : visit == Visit::postorder ? "Postorder"
+                                        : "Preorder")
+        << " visit" << std::endl;
     switch (visit) {
       case Visit::inorder: {
         inorder_visit(node, out);
         return;
       }
-
-      case Visit::preorder: {
-        preorder_visit(node, out);
-        return;
-      }
-
       case Visit::postorder: {
         postorder_visit(node, out);
         return;
       }
-
-      default: {
-        log("Invalid visit type", LogLevel::ERROR);
+      case Visit::preorder: {
+        preorder_visit(node, out);
         return;
       }
     }
   }
 
-  Node<T>*& tree_minimum(Node<T>*& node) {
-    while (node->get_child(Child::left)) node = node->get_child(Child::left);
-
+  Node* tree_minimum(Node*& node) {
+    while (node->get_left()) node = node->get_left();
     return node;
   }
 
-  Node<T>*& tree_maximum(Node<T>*& node) {
-    while (node->get_child(Child::right)) node = node->get_child(Child::right);
-
+  Node* tree_maximum(Node*& node) {
+    while (node->get_right()) node = node->get_right();
     return node;
   }
 
-  Node<T>* predecessor(Node<T>* node) {
+  Node* predecessor(Node* node) {
     if (!node) {
-      log("Invalid node for predecessor function", LogLevel::ERROR);
+      log("[predecessor] => invalid node", LogLevel::ERROR);
       return nullptr;
     }
 
-    if (node->get_child(Child::left)) return tree_maximum(node->get_child(Child::left));
+    if (node->get_left()) return tree_maximum(node->get_left());
 
-    Node<T>* parent = node->get_parent();
-    while (parent && node == parent->get_child(Child::left)) {
+    Node* parent = node->get_parent();
+    while (parent && node == parent->get_left()) {
       node = parent;
       parent = parent->get_parent();
     }
@@ -149,16 +158,16 @@ public:
     return parent;
   }
 
-  Node<T>* successor(Node<T>* node) {
+  Node* successor(Node* node) {
     if (!node) {
-      log("Invalid node for successor function", LogLevel::ERROR);
+      log("[successor] => invalid node", LogLevel::ERROR);
       return nullptr;
     }
 
-    if (node->get_child(Child::right)) return tree_minimum(node->get_child(Child::right));
+    if (node->get_right()) return tree_minimum(node->get_right());
 
-    Node<T>* parent = node->get_parent();
-    while (parent && node == parent->get_child(Child::right)) {
+    Node* parent = node->get_parent();
+    while (parent && node == parent->get_right()) {
       node = parent;
       parent = parent->get_parent();
     }
@@ -166,60 +175,46 @@ public:
     return parent;
   }
 
-  void print_predecessor(Node<T>* node, std::ostream& out = std::cout) {
-    Node<T>* pred = predecessor(node);
+  void print_successor(Node* node, std::ostream& out = std::cout) {
+    Node* succ = successor(node);
 
-    if (!pred) {
-      out << "No predecessor for node ";
-      node->print(out);
-    } else {
-      out << "Predecessor for node ";
-      node->print(out);
-      out << "\t";
-      pred->print(out);
-    }
-
+    if (!succ)
+      out << "Node (" << node->get_key() << ") => no successor found";
+    else
+      out << "Node (" << node->get_key() << ") => successor: (" << succ->get_key() << ")";
     out << std::endl;
   }
 
-  void print_successor(Node<T>* node, std::ostream& out = std::cout) {
-    Node<T>* succ = successor(node);
+  void print_predecessor(Node* node, std::ostream& out = std::cout) {
+    Node* pred = predecessor(node);
 
-    if (!succ) {
-      out << "No successor for node ";
-      node->print(out);
-    } else {
-      out << "Successor for node ";
-      node->print(out);
-      out << "\t";
-      succ->print(out);
-    }
-
+    if (!pred)
+      out << "Node (" << node->get_key() << ") => no predecessor found";
+    else
+      out << "Node (" << node->get_key() << ") => predecessor: (" << pred->get_key() << ")";
     out << std::endl;
   }
 
-  Node<T>* search(Node<T>* node, T key) {
-    std::ostringstream ss;
-    ss << "Searching node with key " << key;
-    log(ss.str());
-    ss.clear();
-    ss.str("");
-
+  Node* search(Node* node, int key) {
+    std::ostringstream oss;
     if (!node) {
-      ss << "Node (" << key << ") not found";
-      log(ss.str(), LogLevel::ERROR);
+      oss << "[search] => no node found with key " << key;
+      log(oss.str(), LogLevel::ERROR);
+      clear_stream(oss);
+
       return nullptr;
     }
 
     if (node->get_key() == key) {
-      ss << "Node (" << node->get_key() << ") found";
-      log(ss.str());
+      oss << "Node (" << node->get_key() << " found";
+      log(oss.str());
+      clear_stream(oss);
 
       return node;
     }
 
-    if (key < node->get_key()) return search(node->get_child(Child::left), key);
-    return search(node->get_child(Child::right), key);
+    if (key < node->get_key()) return search(node->get_left(), key);
+    return search(node->get_right(), key);
   }
 };
 

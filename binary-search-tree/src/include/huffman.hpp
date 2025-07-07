@@ -4,37 +4,57 @@
 #include <fstream>
 #include <queue>
 #include <sstream>
+#include <string>
 #include <unordered_map>
 #include <vector>
 
-#include "logger.hpp"
 #include "node.hpp"
 
-template <typename T>
 class Huffman {
-  std::vector<Node<T>*> nodes;
-  Node<T>* root;
+  std::vector<Node*> nodes;
+  Node* root;
   std::unordered_map<char, std::string> codes;
 
   struct Compare {
-    bool operator()(Node<T>* node1, Node<T>* node2) { return node1->get_frequency() > node2->get_frequency(); }
+    bool operator()(Node* node1, Node* node2) { return node1->get_frequency() > node2->get_frequency(); }
   };
 
+  void delete_tree(Node*& node) {
+    if (!node) return;
+
+    delete_tree(node->get_left());
+    delete_tree(node->get_right());
+    delete node;
+    node = nullptr;
+  }
+
+  void format_line(std::string& line) {
+    if (line.front() == '<') line = line.substr(1);
+    if (line.back() == '>') line.pop_back();
+    for (auto& c : line) {
+      if (c == ',') c = ' ';
+    }
+  }
+
+  void clear_stream(std::istringstream& stream) {
+    stream.clear();
+    stream.str("");
+  }
+
   void build_tree() {
-    std::priority_queue<Node<T>*, std::vector<Node<T>*>, Compare> pq;
+    std::priority_queue<Node*, std::vector<Node*>, Compare> pq;
     for (auto& node : nodes) pq.push(node);
 
     while (pq.size() > 1) {
-      Node<T>* left = pq.top();
+      Node* left = pq.top();
       pq.pop();
 
-      Node<T>* right = pq.top();
+      Node* right = pq.top();
       pq.pop();
 
-      Node<T>* node = new Node<T>(-1, left->get_frequency() + right->get_frequency(), '*', left, right);
+      Node* node = new Node(-1, '*', left->get_frequency() + right->get_frequency(), left, right, nullptr);
       left->set_parent(node);
       right->set_parent(node);
-
       pq.push(node);
     }
 
@@ -42,24 +62,15 @@ class Huffman {
     pq.pop();
   }
 
-  void delete_tree(Node<T>*& node) {
+  void generate_codes(Node* node, std::string path = "") {
     if (!node) return;
 
-    delete_tree(node->get_child((Child::left)));
-    delete_tree(node->get_child((Child::right)));
-    delete node;
-  }
-
-  void clear_nodes() {
-    if (!nodes.empty()) {
-      for (auto& node : nodes) delete node;
-    }
-    nodes.clear();
+    if (node->is_leaf()) codes[node->get_character()] = path;
+    generate_codes(node->get_left(), path + "0");
+    generate_codes(node->get_right(), path + "1");
   }
 
 public:
-  Huffman() : root(nullptr) {}
-
   Huffman(std::ifstream& input) : root(nullptr) {
     load(input);
     build_tree();
@@ -68,61 +79,64 @@ public:
 
   ~Huffman() {
     delete_tree(root);
-    clear_nodes();
+    nodes.clear();
   }
 
   void load(std::ifstream& input) {
-    clear_nodes();
+    delete_tree(root);
     input.clear();
     input.seekg(0, std::ios::beg);
 
     std::string line;
     while (std::getline(input, line)) {
-      if (line.front() == '<') line = line.substr(1);
-      if (line.back() == '>') line.pop_back();
-      for (auto& c : line) c = c == ',' ? ' ' : c;
+      format_line(line);
+      std::istringstream iss(line);
 
-      std::istringstream ss(line);
       int frequency;
       char ch;
+      iss >> frequency >> ch;
+      nodes.push_back(new Node(-1, ch, frequency));
 
-      ss >> frequency >> ch;
-      nodes.push_back(new Node<T>(-1, frequency, ch));
-
-      ss.clear();
-      ss.str("");
+      clear_stream(iss);
     }
   }
 
-  void generate_codes(Node<T>* node, std::string path = "") {
-    if (!node) return;
+  std::string encode(std::string input) {
+    std::string encoded;
 
-    if (node->is_leaf()) codes[node->get_character()] = path;
-    generate_codes(node->get_child(Child::left), path + "0");
-    generate_codes(node->get_child(Child::right), path + "1");
+    for (auto& c : input) {
+      if (codes.find(c) != codes.end())
+        encoded += codes[c] + (input.back() == c ? "" : " ");
+      else
+        return "";
+    }
+
+    return encoded;
+  }
+
+  std::string decode(std::string encoded) {
+    std::string decoded;
+    Node* current = root;
+
+    for (auto& bit : encoded) {
+      if (bit == '0')
+        current = current->get_left();
+      else if (bit == '1')
+        current = current->get_right();
+
+      if (current->is_leaf()) {
+        decoded += current->get_character();
+        current = root;
+      }
+    }
+
+    return decoded;
   }
 
   void print_codes(std::ostream& out = std::cout) {
     out << "Huffman codes" << std::endl;
     for (auto& pair : codes) out << pair.first << " => " << pair.second << std::endl;
     out << std::endl;
-  }
-
-  std::string encode(std::string input) {
-    std::string encoded;
-
-    for (auto& ch : input) {
-      if (codes.find(ch) != codes.end())
-        encoded += codes[ch] + (ch == input.back() ? "" : " ");
-      else {
-        std::ostringstream ss;
-        ss << "Error in encode Huffman function => " << ch << " not found in codes";
-        log(ss.str(), LogLevel::ERROR);
-        return "";
-      }
-    }
-
-    return encoded;
   }
 
   void print_encode(std::string input, std::ostream& out = std::cout) {
@@ -137,22 +151,6 @@ public:
     (decoded.empty() ? out << "Decoded string is empty"
                      : out << "Decoded string for encoded string \"" << encoded << "\" => " << decoded);
     out << std::endl;
-  }
-
-  std::string decode(std::string encoded) {
-    std::string decoded;
-    Node<T>* current = root;
-
-    for (auto& bit : encoded) {
-      if (bit == '0') current = current->get_child(Child::left);
-      if (bit == '1') current = current->get_child(Child::right);
-      if (current->is_leaf()) {
-        decoded += current->get_character();
-        current = root;
-      }
-    }
-
-    return decoded;
   }
 };
 
