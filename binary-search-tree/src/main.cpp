@@ -10,12 +10,13 @@ int main() {
 
   BinarySearchTree bst(exam_input);
   bst.visit(Visit::preorder);
+  bst.visit(Visit::preorder, nullptr, output);
 
   cout << endl;
   bst.print_predecessor(bst.get_root());
   bst.print_successor(bst.get_root());
 
-  int key_search = 33;
+  int key_search = 5;
   Node* node_search = bst.search(bst.get_root(), key_search);
 
   Huffman h(exam_input);

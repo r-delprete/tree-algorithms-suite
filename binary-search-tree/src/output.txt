@@ -1,0 +1,6 @@
+Preorder visit
+Node (40 - A) => frequency: 2147483647 - left: (30 - B) - right: (NULL) - parent: (NULL)
+Node (30 - B) => frequency: 2147483647 - left: (15 - C) - right: (NULL) - parent: (40 - A)
+Node (15 - C) => frequency: 2147483647 - left: (10 - D) - right: (NULL) - parent: (30 - B)
+Node (10 - D) => frequency: 2147483647 - left: (5 - E) - right: (NULL) - parent: (15 - C)
+Node (5 - E) => frequency: 2147483647 - left: (NULL) - right: (NULL) - parent: (10 - D)

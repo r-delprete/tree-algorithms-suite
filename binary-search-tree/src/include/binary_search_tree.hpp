@@ -1,14 +1,13 @@
-#ifndef BINARY_SEARCH_TREE_HPP
-#define BINARY_SEARCH_TREE_HPP
+#ifndef BINARY_SEARCH_TREE
+#define BINARY_SEARCH_TREE
 
 #include <fstream>
 #include <sstream>
 #include <string>
 
-#include "logger.hpp"
-#include "node.hpp"
+enum Visit { preorder, postorder, inorder };
 
-enum Visit { inorder, preorder, postorder };
+#include "node.hpp"
 
 class BinarySearchTree {
   Node* root;
@@ -21,6 +20,11 @@ class BinarySearchTree {
     }
   }
 
+  void clear_stream(std::istringstream& stream) {
+    stream.clear();
+    stream.str("");
+  }
+
   void delete_tree(Node*& node) {
     if (!node) return;
 
@@ -28,16 +32,6 @@ class BinarySearchTree {
     delete_tree(node->get_right());
     delete node;
     node = nullptr;
-  }
-
-  void clear_stream(std::istringstream& stream) {
-    stream.clear();
-    stream.str("");
-  }
-
-  void clear_stream(std::ostringstream& stream) {
-    stream.clear();
-    stream.str("");
   }
 
   void insert_recursive(Node*& start, Node* node) {
@@ -55,7 +49,7 @@ class BinarySearchTree {
     }
   }
 
-  void inorder_visit(Node* node, std::ostream& out) {
+  void inorder_visit(Node* node, std::ostream& out = std::cout) {
     if (!node) return;
 
     inorder_visit(node->get_left(), out);
@@ -63,7 +57,7 @@ class BinarySearchTree {
     inorder_visit(node->get_right(), out);
   }
 
-  void preorder_visit(Node* node, std::ostream& out) {
+  void preorder_visit(Node* node, std::ostream& out = std::cout) {
     if (!node) return;
 
     node->print(out);
@@ -71,7 +65,7 @@ class BinarySearchTree {
     preorder_visit(node->get_right(), out);
   }
 
-  void postorder_visit(Node* node, std::ostream& out) {
+  void postorder_visit(Node* node, std::ostream& out = std::cout) {
     if (!node) return;
 
     postorder_visit(node->get_left(), out);
@@ -97,53 +91,67 @@ public:
       std::istringstream iss(line);
 
       int key;
-      char ch;
+      char character;
+      iss >> key >> character;
+      insert(new Node(key, character));
 
-      iss >> key >> ch;
-      insert_node(new Node(key, ch));
       clear_stream(iss);
     }
   }
 
-  void insert_node(Node* node) { insert_recursive(root, node); }
+  void insert(Node* node) {
+    insert_recursive(root, node);
+    std::cout << "[insert INFO] Inserted node ";
+    node->print();
+  }
 
-  void visit(Visit visit, Node* node = nullptr, std::ostream& out = std::cout) {
-    if (!node && !root) return;
+  void visit(Visit type, Node* node = nullptr, std::ostream& out = std::cout) {
+    if (!node && !root) {
+      std::cerr << "[visit ERROR] Tree is empty" << std::endl;
+      return;
+    }
+
     if (!node) node = root;
 
-    out << (visit == Visit::inorder     ? "Inorder"
-            : visit == Visit::postorder ? "Postorder"
-                                        : "Preorder")
-        << " visit" << std::endl;
-    switch (visit) {
+    switch (type) {
       case Visit::inorder: {
+        out << "Inorder visit" << std::endl;
         inorder_visit(node, out);
-        return;
+        break;
       }
-      case Visit::postorder: {
-        postorder_visit(node, out);
-        return;
-      }
+
       case Visit::preorder: {
+        out << "Preorder visit" << std::endl;
         preorder_visit(node, out);
-        return;
+        break;
+      }
+
+      case Visit::postorder: {
+        out << "Postorder visit" << std::endl;
+        postorder_visit(node, out);
+        break;
+      }
+
+      default: {
+        std::cerr << "[visit ERROR] Visit type invalid" << std::endl;
+        break;
       }
     }
   }
 
-  Node* tree_minimum(Node*& node) {
+  Node* tree_minimum(Node* node) {
     while (node->get_left()) node = node->get_left();
     return node;
   }
 
-  Node* tree_maximum(Node*& node) {
+  Node* tree_maximum(Node* node) {
     while (node->get_right()) node = node->get_right();
     return node;
   }
 
   Node* predecessor(Node* node) {
     if (!node) {
-      log("[predecessor] => invalid node", LogLevel::ERROR);
+      std::cerr << "[predecessor ERROR] Invalid node" << std::endl;
       return nullptr;
     }
 
@@ -160,7 +168,7 @@ public:
 
   Node* successor(Node* node) {
     if (!node) {
-      log("[successor] => invalid node", LogLevel::ERROR);
+      std::cerr << "[successor ERROR] Invalid node" << std::endl;
       return nullptr;
     }
 
@@ -196,25 +204,20 @@ public:
   }
 
   Node* search(Node* node, int key) {
-    std::ostringstream oss;
     if (!node) {
-      oss << "[search] => no node found with key " << key;
-      log(oss.str(), LogLevel::ERROR);
-      clear_stream(oss);
-
+      std::cerr << "[search ERROR] Node (" << key << ") not found" << std::endl;
       return nullptr;
     }
 
     if (node->get_key() == key) {
-      oss << "Node (" << node->get_key() << " found";
-      log(oss.str());
-      clear_stream(oss);
-
+      std::cout << "[search INFO] Node (" << key << ") found" << std::endl;
       return node;
     }
 
-    if (key < node->get_key()) return search(node->get_left(), key);
-    return search(node->get_right(), key);
+    if (key < node->get_key())
+      return search(node->get_left(), key);
+    else
+      return search(node->get_right(), key);
   }
 };
 
