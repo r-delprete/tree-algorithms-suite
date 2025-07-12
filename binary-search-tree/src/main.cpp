@@ -9,15 +9,21 @@ int main() {
   ofstream output("output.txt");
 
   BinarySearchTree bst(exam_input);
-  bst.visit(Visit::preorder);
-  bst.visit(Visit::preorder, nullptr, output);
+  bst.visit(bst.get_root(), Visit::preorder);
+  bst.visit(bst.get_root(), Visit::preorder, output);
 
   cout << endl;
   bst.print_predecessor(bst.get_root());
   bst.print_successor(bst.get_root());
 
   int key_search = 5;
-  Node* node_search = bst.search(bst.get_root(), key_search);
+  auto node_search = bst.search(bst.get_root(), key_search);
+  if (node_search) {
+    cout << "Found node with key " << key_search << " => ";
+    node_search->print();
+  } else
+    cout << "Node with key " << key_search << " not found";
+  cout << endl;
 
   Huffman h(exam_input);
   h.print_codes();

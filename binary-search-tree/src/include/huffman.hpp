@@ -11,28 +11,22 @@
 #include "node.hpp"
 
 class Huffman {
-  std::vector<Node*> nodes;
-  Node* root;
+  std::vector<shared_node_ptr> nodes;
+  shared_node_ptr root;
   std::unordered_map<char, std::string> codes;
 
   struct Compare {
-    bool operator()(Node* node1, Node* node2) { return node1->get_frequency() > node2->get_frequency(); }
+    bool operator()(const shared_node_ptr& node1, const shared_node_ptr& node2) {
+      return node1->get_frequency() > node2->get_frequency();
+    }
   };
 
-  void delete_tree(Node*& node) {
-    if (!node) return;
-
-    delete_tree(node->get_left());
-    delete_tree(node->get_right());
-    delete node;
-    node = nullptr;
-  }
-
   void format_line(std::string& line) {
+    if (line.empty()) return;
     if (line.front() == '<') line = line.substr(1);
     if (line.back() == '>') line.pop_back();
-    for (auto& c : line) {
-      if (c == ',') c = ' ';
+    for (auto& ch : line) {
+      if (ch == ',') ch = ' ';
     }
   }
 
@@ -41,28 +35,34 @@ class Huffman {
     stream.str("");
   }
 
-  void build_tree() {
-    std::priority_queue<Node*, std::vector<Node*>, Compare> pq;
+  void generate_huffman_tree() {
+    std::priority_queue<shared_node_ptr, std::vector<shared_node_ptr>, Compare> pq;
     for (auto& node : nodes) pq.push(node);
 
     while (pq.size() > 1) {
-      Node* left = pq.top();
+      auto left = pq.top();
       pq.pop();
 
-      Node* right = pq.top();
+      auto right = pq.top();
       pq.pop();
 
-      Node* node = new Node(-1, '*', left->get_frequency() + right->get_frequency(), left, right, nullptr);
+      auto node = make_node_shared(-1, '*', left->get_frequency() + right->get_frequency());
       left->set_parent(node);
       right->set_parent(node);
+      node->set_left(left);
+      node->set_right(right);
+
       pq.push(node);
+      nodes.push_back(node);
     }
 
     root = pq.top();
     pq.pop();
+
+    generate_codes(root);
   }
 
-  void generate_codes(Node* node, std::string path = "") {
+  void generate_codes(const shared_node_ptr& node, std::string path = "") {
     if (!node) return;
 
     if (node->is_leaf()) codes[node->get_character()] = path;
@@ -71,19 +71,12 @@ class Huffman {
   }
 
 public:
-  Huffman(std::ifstream& input) : root(nullptr) {
-    load(input);
-    build_tree();
-    generate_codes(root);
-  }
+  Huffman(std::ifstream& input) { load(input); }
 
-  ~Huffman() {
-    delete_tree(root);
-    nodes.clear();
-  }
+  void reset() { nodes.clear(); }
 
   void load(std::ifstream& input) {
-    delete_tree(root);
+    reset();
     input.clear();
     input.seekg(0, std::ios::beg);
 
@@ -91,22 +84,25 @@ public:
     while (std::getline(input, line)) {
       format_line(line);
       std::istringstream iss(line);
-
-      int frequency;
+      int key;
       char ch;
-      iss >> frequency >> ch;
-      nodes.push_back(new Node(-1, ch, frequency));
-
+      iss >> key >> ch;
+      nodes.push_back(make_node_shared(key, ch));
       clear_stream(iss);
+      line.clear();
     }
+
+    generate_huffman_tree();
   }
 
-  std::string encode(std::string input) {
+  std::string encode(const std::string& input) {
     std::string encoded;
 
-    for (auto& c : input) {
-      if (codes.find(c) != codes.end())
-        encoded += codes[c] + (input.back() == c ? "" : " ");
+    for (int i = 0; i < input.length(); i++) {
+      auto ch = input[i];
+
+      if (codes.find(ch) != codes.end())
+        encoded += codes[ch] + (i == input.size() - 1 ? "" : " ");
       else
         return "";
     }
@@ -114,15 +110,17 @@ public:
     return encoded;
   }
 
-  std::string decode(std::string encoded) {
+  std::string decode(const std::string& encoded) {
     std::string decoded;
-    Node* current = root;
+    auto current = root;
 
     for (auto& bit : encoded) {
       if (bit == '0')
         current = current->get_left();
       else if (bit == '1')
         current = current->get_right();
+      else if (!current)
+        return "";
 
       if (current->is_leaf()) {
         decoded += current->get_character();
@@ -133,21 +131,21 @@ public:
     return decoded;
   }
 
-  void print_codes(std::ostream& out = std::cout) {
+  void print_codes(std::ostream& out = std::cout) const {
     out << "Huffman codes" << std::endl;
     for (auto& pair : codes) out << pair.first << " => " << pair.second << std::endl;
     out << std::endl;
   }
 
-  void print_encode(std::string input, std::ostream& out = std::cout) {
-    std::string encoded = encode(input);
+  void print_encode(const std::string& input, std::ostream& out = std::cout) {
+    const std::string encoded = encode(input);
     (encoded.empty() ? out << "Encoded string is empty"
                      : out << "Encoded string for input \"" << input << "\" => " << encoded);
     out << std::endl;
   }
 
-  void print_decode(std::string encoded, std::ostream& out = std::cout) {
-    std::string decoded = decode(encoded);
+  void print_decode(const std::string& encoded, std::ostream& out = std::cout) {
+    const std::string decoded = decode(encoded);
     (decoded.empty() ? out << "Decoded string is empty"
                      : out << "Decoded string for encoded string \"" << encoded << "\" => " << decoded);
     out << std::endl;
