@@ -46,7 +46,7 @@ class Huffman {
       auto right = pq.top();
       pq.pop();
 
-      auto node = make_node_shared(-1, '*', left->get_frequency() + right->get_frequency());
+      auto node = create_node(-1, '*', left->get_frequency() + right->get_frequency());
       left->set_parent(node);
       right->set_parent(node);
       node->set_left(left);
@@ -87,7 +87,7 @@ public:
       int key;
       char ch;
       iss >> key >> ch;
-      nodes.push_back(make_node_shared(key, ch));
+      nodes.push_back(create_node(key, ch));
       clear_stream(iss);
       line.clear();
     }
