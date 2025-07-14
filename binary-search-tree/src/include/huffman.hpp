@@ -11,34 +11,20 @@
 #include "node.hpp"
 
 class Huffman {
-  std::vector<shared_node_ptr> nodes;
-  shared_node_ptr root;
+  std::vector<shared_node> nodes;
   std::unordered_map<char, std::string> codes;
+  shared_node root;
 
   struct Compare {
-    bool operator()(const shared_node_ptr& node1, const shared_node_ptr& node2) {
+    bool operator()(const shared_node& node1, const shared_node& node2) {
       return node1->get_frequency() > node2->get_frequency();
     }
   };
 
-  void format_line(std::string& line) {
-    if (line.empty()) return;
-    if (line.front() == '<') line = line.substr(1);
-    if (line.back() == '>') line.pop_back();
-    for (auto& ch : line) {
-      if (ch == ',') ch = ' ';
-    }
-  }
+  void build_tree() {
+    std::priority_queue<shared_node, std::vector<shared_node>, Compare> pq;
 
-  void clear_stream(std::istringstream& stream) {
-    stream.clear();
-    stream.str("");
-  }
-
-  void generate_huffman_tree() {
-    std::priority_queue<shared_node_ptr, std::vector<shared_node_ptr>, Compare> pq;
     for (auto& node : nodes) pq.push(node);
-
     while (pq.size() > 1) {
       auto left = pq.top();
       pq.pop();
@@ -47,22 +33,20 @@ class Huffman {
       pq.pop();
 
       auto node = create_node(-1, '*', left->get_frequency() + right->get_frequency());
-      left->set_parent(node);
-      right->set_parent(node);
       node->set_left(left);
       node->set_right(right);
+      left->set_parent(node);
+      right->set_parent(node);
 
-      pq.push(node);
       nodes.push_back(node);
+      pq.push(node);
     }
 
     root = pq.top();
     pq.pop();
-
-    generate_codes(root);
   }
 
-  void generate_codes(const shared_node_ptr& node, std::string path = "") {
+  void generate_codes(const shared_node& node, const std::string path = "") {
     if (!node) return;
 
     if (node->is_leaf()) codes[node->get_character()] = path;
@@ -71,7 +55,11 @@ class Huffman {
   }
 
 public:
-  Huffman(std::ifstream& input) { load(input); }
+  Huffman(std::ifstream& input) {
+    load(input);
+    build_tree();
+    generate_codes(root);
+  }
 
   void reset() { nodes.clear(); }
 
@@ -84,25 +72,26 @@ public:
     while (std::getline(input, line)) {
       format_line(line);
       std::istringstream iss(line);
-      int key;
+
+      int frequency;
       char ch;
-      iss >> key >> ch;
-      nodes.push_back(create_node(key, ch));
+      iss >> frequency >> ch;
+
+      nodes.push_back(create_node(-1, ch, frequency));
+
       clear_stream(iss);
       line.clear();
     }
-
-    generate_huffman_tree();
   }
 
-  std::string encode(const std::string& input) {
+  std::string encode(const std::string& input) const {
     std::string encoded;
 
-    for (int i = 0; i < input.length(); i++) {
+    for (int i = 0; i < input.size(); i++) {
       auto ch = input[i];
 
       if (codes.find(ch) != codes.end())
-        encoded += codes[ch] + (i == input.size() - 1 ? "" : " ");
+        encoded += codes.at(ch) + (i != input.size() - 1 ? " " : "");
       else
         return "";
     }
@@ -110,17 +99,17 @@ public:
     return encoded;
   }
 
-  std::string decode(const std::string& encoded) {
+  std::string decode(const std::string& encoded) const {
     std::string decoded;
     auto current = root;
 
     for (auto& bit : encoded) {
+      if (!current) return "";
+
       if (bit == '0')
         current = current->get_left();
       else if (bit == '1')
         current = current->get_right();
-      else if (!current)
-        return "";
 
       if (current->is_leaf()) {
         decoded += current->get_character();
@@ -137,14 +126,14 @@ public:
     out << std::endl;
   }
 
-  void print_encode(const std::string& input, std::ostream& out = std::cout) {
+  void print_encode(const std::string& input, std::ostream& out = std::cout) const {
     const std::string encoded = encode(input);
     (encoded.empty() ? out << "Encoded string is empty"
                      : out << "Encoded string for input \"" << input << "\" => " << encoded);
     out << std::endl;
   }
 
-  void print_decode(const std::string& encoded, std::ostream& out = std::cout) {
+  void print_decode(const std::string& encoded, std::ostream& out = std::cout) const {
     const std::string decoded = decode(encoded);
     (decoded.empty() ? out << "Decoded string is empty"
                      : out << "Decoded string for encoded string \"" << encoded << "\" => " << decoded);

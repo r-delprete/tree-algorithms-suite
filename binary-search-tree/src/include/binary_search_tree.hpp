@@ -9,10 +9,24 @@ enum Visit { preorder, postorder, inorder };
 
 #include "node.hpp"
 
-class BinarySearchTree {
-  shared_node_ptr root;
+inline void format_line(std::string& line) {
+  if (line.empty()) return;
+  if (line.front() == '<') line = line.substr(1);
+  if (line.back() == '>') line.pop_back();
+  for (auto& ch : line) {
+    if (ch == ',') ch = ' ';
+  }
+}
 
-  void preorder_visit(const shared_node_ptr& node, std::ostream& out = std::cout) const {
+inline void clear_stream(std::istringstream& stream) {
+  stream.clear();
+  stream.str("");
+}
+
+class BinarySearchTree {
+  shared_node root;
+
+  void preorder_visit(const shared_node& node, std::ostream& out = std::cout) const {
     if (!node) return;
 
     node->print(out);
@@ -20,7 +34,7 @@ class BinarySearchTree {
     preorder_visit(node->get_right(), out);
   }
 
-  void inorder_visit(const shared_node_ptr& node, std::ostream& out = std::cout) const {
+  void inorder_visit(const shared_node& node, std::ostream& out = std::cout) const {
     if (!node) return;
 
     inorder_visit(node->get_left(), out);
@@ -28,7 +42,7 @@ class BinarySearchTree {
     inorder_visit(node->get_right(), out);
   }
 
-  void postorder_visit(const shared_node_ptr& node, std::ostream& out = std::cout) const {
+  void postorder_visit(const shared_node& node, std::ostream& out = std::cout) const {
     if (!node) return;
 
     postorder_visit(node->get_left(), out);
@@ -36,7 +50,7 @@ class BinarySearchTree {
     node->print(out);
   }
 
-  void insert_recursive(shared_node_ptr& start, const shared_node_ptr& node) {
+  void insert_recursive(shared_node& start, const shared_node& node) {
     if (!start) {
       start = node;
       return;
@@ -51,24 +65,10 @@ class BinarySearchTree {
     }
   }
 
-  void format_line(std::string& line) const {
-    if (line.empty()) return;
-    if (line.front() == '<') line = line.substr(1);
-    if (line.back() == '>') line.pop_back();
-    for (auto& ch : line) {
-      if (ch == ',') ch = ' ';
-    }
-  }
-
-  void clear_stream(std::istringstream& stream) const {
-    stream.clear();
-    stream.str("");
-  }
-
 public:
   BinarySearchTree(std::ifstream& input) : root(nullptr) { load(input); }
 
-  void delete_subtree(shared_node_ptr& node) {
+  void delete_subtree(shared_node& node) {
     if (!node) return;
 
     delete_subtree(node->get_left_ref());
@@ -76,7 +76,7 @@ public:
     node = nullptr;
   }
 
-  shared_node_ptr get_root() const { return root; }
+  shared_node get_root() const { return root; }
 
   void load(std::ifstream& input) {
     delete_subtree(root);
@@ -96,23 +96,23 @@ public:
     }
   }
 
-  void insert(const shared_node_ptr& node) { insert_recursive(root, node); }
+  void insert(const shared_node& node) { insert_recursive(root, node); }
 
-  shared_node_ptr tree_maximum(const shared_node_ptr& node) const {
+  shared_node tree_maximum(const shared_node& node) const {
     auto tmp = node;
 
     while (tmp->get_right()) tmp = tmp->get_right();
     return tmp;
   }
 
-  shared_node_ptr tree_minimum(const shared_node_ptr& node) const {
+  shared_node tree_minimum(const shared_node& node) const {
     auto tmp = node;
 
     while (tmp->get_left()) tmp = tmp->get_left();
     return tmp;
   }
 
-  shared_node_ptr get_predecessor(const shared_node_ptr& node) const {
+  shared_node get_predecessor(const shared_node& node) const {
     if (!node) {
       std::cerr << "[get_predecessor ERROR] Invalid node" << std::endl;
       return nullptr;
@@ -130,7 +130,7 @@ public:
     return parent;
   }
 
-  shared_node_ptr get_successor(const shared_node_ptr& node) const {
+  shared_node get_successor(const shared_node& node) const {
     if (!node) {
       std::cerr << "[get_successor ERROR] Invalid node" << std::endl;
       return nullptr;
@@ -148,7 +148,7 @@ public:
     return parent;
   }
 
-  shared_node_ptr search(const shared_node_ptr& node, const int key) const {
+  shared_node search(const shared_node& node, const int key) const {
     if (!node) return nullptr;
 
     if (node->get_key() == key) return node;
@@ -156,7 +156,7 @@ public:
     return search(node->get_right(), key);
   }
 
-  void print_predecessor(const shared_node_ptr& node, std::ostream& out = std::cout) const {
+  void print_predecessor(const shared_node& node, std::ostream& out = std::cout) const {
     auto predecessor = get_predecessor(node);
 
     out << "Predecessor for node (" << node->get_key() << ") => " << "(";
@@ -167,7 +167,7 @@ public:
     out << ")" << std::endl;
   }
 
-  void print_successor(const shared_node_ptr& node, std::ostream& out = std::cout) const {
+  void print_successor(const shared_node& node, std::ostream& out = std::cout) const {
     auto successor = get_successor(node);
 
     out << "Successor for node (" << node->get_key() << ") => " << "(";
@@ -178,7 +178,7 @@ public:
     out << ")" << std::endl;
   }
 
-  void visit(const shared_node_ptr& node, Visit visit, std::ostream& out = std::cout) const {
+  void visit(const shared_node& node, Visit visit, std::ostream& out = std::cout) const {
     out << (visit == Visit::inorder     ? "Inorder"
             : visit == Visit::postorder ? "Postorder"
                                         : "Preorder")
